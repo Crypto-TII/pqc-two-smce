@@ -14,6 +14,7 @@ from sage.all import (
     identity_matrix,
 )
 
+
 def arguments(args=sys.argv[1:]):
     parser = argparse.ArgumentParser(description="Parses command.")
     parser.add_argument("-k", "--code_dimension", type=int, help="Code dimension parameter k", required=False)
@@ -95,7 +96,7 @@ def generate_instance(k, m, n, q, simce=False):
         G2 = sample_full_rank_matrix(k, m*n, q)
         G3 = S * G2 * Q
     
-    return (G0, G1), (G2, G3)
+    return (G0, G1), (G2, G3), S
 
 
 def commutation_matrix(m, n):
@@ -107,74 +108,52 @@ def commutation_matrix(m, n):
     return K
 
 
+def vectorization(m):
+    return vector(m.list())
+
+
 def solver_two_smce(F, G0, G1, G2, G3):
     start = time()
     print(f'\nWe first recover the invertible matrix S')
     
     Ik = identity_matrix(F, k, k)
-    K = matrix(F, commutation_matrix(k, k))
 
     # Equations determined by (G₀G₁ᵀ, G₁G₀ᵀ) and (G₂G₃ᵀ, G₃G₂ᵀ)
-    G10 = G1 * G0.transpose()
-    G32 = G3 * G2.transpose()
+    G01 = G0 * G1.transpose()
+    G23 = G2 * G3.transpose()
 
-    assert(G10.rank() == k)
-    assert(G32.rank() == k)
-    X10 = Ik.tensor_product(G10)
-    Y10 = G10.tensor_product(Ik)
-    Y10 *= K
+    G10_inverse = G01.inverse()
+    R = (G10_inverse * G23).transpose()
+    T = G23 * G10_inverse
 
-    X32 = Ik.tensor_product(G32)
-    Y32 = G32.tensor_product(Ik)
-    Y32 *= K
+    XR = Ik.tensor_product(T.transpose())
+    YT = R.tensor_product(Ik)
 
-    # Sanity checks
-    vec = lambda m: vector(m.list())
-    assert(vec(G10.transpose()) != vec(G10))
-    assert(K * vec(G10.transpose()) == vec(G10))
-    assert(vec(G32.transpose()) != vec(G32))
-    assert(K * vec(G32.transpose()) == vec(G32))
+    system = XR - YT
 
     # Equations determined by (G₀G₃ᵀ, G₁G₂ᵀ) and (G₂G₁ᵀ, G₃G₀ᵀ)
-    G30 = G3 * G0.transpose()
-    G12 = G1 * G2.transpose()
+    G03 = G0 * G3.transpose()
+    G21 = G2 * G1.transpose()
 
-    assert(G30.rank() == k)
-    assert(G12.rank() == k)
-    X30 = Ik.tensor_product(G30)
-    Y12 = G12.tensor_product(Ik)
-    Y12 *= K
+    G03_inverse = G03.inverse()
+    G12_inverse = G21.inverse()
 
-    X12 = Ik.tensor_product(G12)
-    Y30 = G30.tensor_product(Ik)
-    Y30 *= K
+    R = (G12_inverse * G03).transpose()
+    T = G21 * G03_inverse
 
-    # Sanity checks
-    vec = lambda m: vector(m.list())
-    assert(vec(G30.transpose()) != vec(G10))
-    assert(K * vec(G30.transpose()) == vec(G30))
-    assert(vec(G12.transpose()) != vec(G12))
-    assert(K * vec(G12.transpose()) == vec(G12))
+    XR = Ik.tensor_product(T.transpose())
+    YT = R.tensor_product(Ik)
 
-    for epsilon in [+1,-1]:
-        #      Symmetric structure gives rank k(k-1)/2
-        # Skew-symmetric structure gives rank k(k+1)/2
-        # Build initial system
-        current_system = zero_matrix(F, 0, k**2)
-        current_system = current_system.stack(X10 - epsilon*Y10)
-        current_system = current_system.stack(X32 - epsilon*Y32)
-        current_system = current_system.stack(X30 - epsilon*Y12)
-        current_system = current_system.stack(X12 - epsilon*Y30)
-
-        kernel = current_system.right_kernel().matrix()
-        del current_system
-        gc.collect()
-        if kernel.nrows() == 1:
-            break
+    system = system.stack(XR - YT)
+    kernel = system.right_kernel().matrix()
 
     assert(kernel.nrows() == 1)
     S = matrix(k ,k, kernel[0])
     assert(S.is_invertible())
+
+    del system
+    del kernel
+    gc.collect()    
 
     print(f'We next recover the (skew) symmetric matrices A and B')
 
@@ -196,30 +175,29 @@ def solver_two_smce(F, G0, G1, G2, G3):
     current_rank = 0
     for r in range(k):
         for c in range(m*n):
+            if current_rank == (num_vars - 1):
+                break
 
             sys.stdout.write(f"\rBuilding reduced system: {current_rank}/{num_vars}")
             sys.stdout.flush()
-            if current_rank == (num_vars - 1):
-                break
 
             row = zero_matrix(F, 1, num_vars)
 
             # Contributions from A
             for i in range(m):
                 for j in range(m):
-                    for t in range(n):
-                        col_index = j*n + t
-                        if col_index == c:
-                            coeff = G1_[r, i*n + t]
-                            row[0, idx_A(i,j)] += coeff
+                    t = c - j*n
+                    if 0 <= t < n:
+                        coeff = G1_[r, i*n + t]
+                        row[0, idx_A(i,j)] += coeff
+            
             # Contributions from B
             for a in range(n):
                 for b in range(n):
-                    for t in range(m):
-                        col_index = t*n + b
-                        if col_index == c:
-                            coeff = -G0[r, t*n + a]
-                            row[0, idx_B(a,b)] += coeff
+                    t = (c - b) // n
+                    if (not (c - b) % n) and (0 <= t < m):
+                        coeff = -G0[r, t*n + a]
+                        row[0, idx_B(a,b)] += coeff
 
             if reduced_system.stack(row).rank() == (current_rank + 1):
                 reduced_system = reduced_system.stack(row)
@@ -253,7 +231,7 @@ def solver_two_smce(F, G0, G1, G2, G3):
 def main(k, m, n, q, simce=False):
     F = FiniteField(q)
 
-    (G0, G1), (G2, G3) = generate_instance(k, m, n, q, simce=simce)
+    (G0, G1), (G2, G3), S = generate_instance(k, m, n, q, simce=simce)
     
     print(f'\nPublic codes:')
     print(f'\nG₀:\n{G0}')

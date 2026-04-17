@@ -118,33 +118,29 @@ def solver_two_smce(F, G0, G1, G2, G3):
     
     Ik = identity_matrix(F, k, k)
 
-    # Equations determined by (G₀G₁ᵀ, G₁G₀ᵀ) and (G₂G₃ᵀ, G₃G₂ᵀ)
+    # Equations determined by Proposition 1
     G01 = G0 * G1.transpose()
-    G23 = G2 * G3.transpose()
-
-    G10_inverse = G01.inverse()
-    R = (G10_inverse * G23).transpose()
-    T = G23 * G10_inverse
-
-    XR = Ik.tensor_product(T.transpose())
-    YT = R.tensor_product(Ik)
-
-    system = XR - YT
-
-    # Equations determined by (G₀G₃ᵀ, G₁G₂ᵀ) and (G₂G₁ᵀ, G₃G₀ᵀ)
-    G03 = G0 * G3.transpose()
+    G30 = G3 * G0.transpose()
     G21 = G2 * G1.transpose()
 
-    G03_inverse = G03.inverse()
-    G12_inverse = G21.inverse()
+    G30_inverse = G30.inverse()
+    G21_inverse = G21.inverse()
+    X1 = G01 * G21_inverse
+    Y1 = G01.transpose() * G30_inverse
 
-    R = (G12_inverse * G03).transpose()
-    T = G21 * G03_inverse
+    lhand = Ik.tensor_product(X1.transpose())
+    rhand = Y1.tensor_product(Ik)
+    system = lhand - rhand
+    
+    # Equations determined by Proposition 2
+    G23 = G2 * G3.transpose()
+    X1 = G23 * G21_inverse
+    Y1 = G23.transpose() * G30_inverse
 
-    XR = Ik.tensor_product(T.transpose())
-    YT = R.tensor_product(Ik)
+    lhand = Ik.tensor_product(X1.transpose())
+    rhand = Y1.tensor_product(Ik)
+    system = system.stack(lhand - rhand)
 
-    system = system.stack(XR - YT)
     kernel = system.right_kernel().matrix()
 
     assert(kernel.nrows() == 1)

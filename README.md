@@ -1,64 +1,97 @@
 # README
 
-Accompanying repository to the manuscript titled **Weak Instances of the Two Matrix Code Equivalence Problem**
+Accompanying repository to the manuscript titled **Weak Instances of the Two Matrix Code Equivalence Problem**.
 
-## Requirements
-
-```python
-import sys
-import argparse
-from random import choice
-import numpy as np
-from time import time
-    
-# SageMath imports
-from sage.all import (
-    matrix,
-    identity_matrix,
-    zero_matrix,
-    FiniteField,
-    vector,
-)
-```
-
-## Instructions
+## How to use the code
 
 ```bash
-% sage -python two_smce.py                       
-usage: two_smce.py [-h] [-k CODE_DIMENSION] [-m CODE_LENGTH_M] -n CODE_LENGTH_N -q PRIME [-i]
+sage -python algorithm1.py --help
+usage: algorithm1.py [-h] [--family {2-sMCE,sIMCE}] [--k K] [--m M] [--n N] [--q Q] [--eps-a {1,-1}] [--eps-b {1,-1}] [--seed SEED]
 
-Parses command.
+Algorithm 1 on a random 2-sMCE / sIMCE instance
 
 options:
   -h, --help            show this help message and exit
-  -k, --code_dimension CODE_DIMENSION
-                        Code dimension parameter k
-  -m, --code_length_m CODE_LENGTH_M
-                        Code length parameter m
-  -n, --code_length_n CODE_LENGTH_N
-                        Code length parameter n
-  -q, --prime PRIME     Field characteristic
-  -i, --simce           For solving sIMCE instances
+  --family {2-sMCE,sIMCE}
+  --k K
+  --m M
+  --n N
+  --q Q
+  --eps-a {1,-1}
+  --eps-b {1,-1}
+  --seed SEED
 ```
 
-Solver can be tested as follows
+## Testing alrgotihm 1
+
+```sh
+# sIMCE
+sage -python algorithm1.py --family sIMCE --k 20 --m 20 --n 20 --q 4093
+sage -python algorithm1.py --family sIMCE --k 20 --m 20 --n 20 --q 4093 --eps-a -1
+sage -python algorithm1.py --family sIMCE --k 20 --m 20 --n 20 --q 4093 --eps-b -1
+sage -python algorithm1.py --family sIMCE --k 20 --m 20 --n 20 --q 4093 --eps-a -1 --eps-b -1
+
+sage -python algorithm1.py --family sIMCE --k 31 --m 31 --n 31 --q 4093
+
+sage -python algorithm1.py --family sIMCE --k 42 --m 42 --n 42 --q 4093
+sage -python algorithm1.py --family sIMCE --k 42 --m 42 --n 42 --q 4093 --eps-a -1
+sage -python algorithm1.py --family sIMCE --k 42 --m 42 --n 42 --q 4093 --eps-b -1
+sage -python algorithm1.py --family sIMCE --k 42 --m 42 --n 42 --q 4093 --eps-a -1 --eps-b -1
+
+sage -python algorithm1.py --family sIMCE --k 46 --m 46 --n 46 --q 4093
+sage -python algorithm1.py --family sIMCE --k 46 --m 46 --n 46 --q 4093 --eps-a -1
+sage -python algorithm1.py --family sIMCE --k 46 --m 46 --n 46 --q 4093 --eps-b -1
+sage -python algorithm1.py --family sIMCE --k 46 --m 46 --n 46 --q 4093 --eps-a -1 --eps-b -1
+
+# 2-sMCE
+sage -python algorithm1.py --family 2-sMCE --k 20 --m 20 --n 20 --q 4093
+sage -python algorithm1.py --family 2-sMCE --k 20 --m 20 --n 20 --q 4093 --eps-a -1
+sage -python algorithm1.py --family 2-sMCE --k 20 --m 20 --n 20 --q 4093 --eps-b -1
+sage -python algorithm1.py --family 2-sMCE --k 20 --m 20 --n 20 --q 4093 --eps-a -1 --eps-b -1
+
+sage -python algorithm1.py --family 2-sMCE --k 31 --m 31 --n 31 --q 4093
+
+sage -python algorithm1.py --family 2-sMCE --k 42 --m 42 --n 42 --q 4093
+sage -python algorithm1.py --family 2-sMCE --k 42 --m 42 --n 42 --q 4093 --eps-a -1
+sage -python algorithm1.py --family 2-sMCE --k 42 --m 42 --n 42 --q 4093 --eps-b -1
+sage -python algorithm1.py --family 2-sMCE --k 42 --m 42 --n 42 --q 4093 --eps-a -1 --eps-b -1
+
+sage -python algorithm1.py --family 2-sMCE --k 46 --m 46 --n 46 --q 4093
+sage -python algorithm1.py --family 2-sMCE --k 46 --m 46 --n 46 --q 4093 --eps-a -1
+sage -python algorithm1.py --family 2-sMCE --k 46 --m 46 --n 46 --q 4093 --eps-b -1
+sage -python algorithm1.py --family 2-sMCE --k 46 --m 46 --n 46 --q 4093 --eps-a -1 --eps-b -1
+```
+
+## Experiments on the heuristics
+
+We provide two scripts for the experiments on the heuristics.
 
 ```bash
-# 2-sMCE
-sage -python two_smce.py -q 4093 -k 20 -m 20 -n 20
-sage -python two_smce.py -q 4093 -k 31 -m 31 -n 31
-sage -python two_smce.py -q 2039 -k 42 -m 42 -n 42
+sage -python experiment_small_parameters.py --help
+usage: experiment_small_parameters.py [-h] [--trials TRIALS] [--q Q] [--cores CORES] [--shapes SHAPES]
 
-# sIMCE
-sage -python two_smce.py -q 4093 -k 20 -m 20 -n 20 --simce
-sage -python two_smce.py -q 4093 -k 31 -m 31 -n 31 --simce
-sage -python two_smce.py -q 2039 -k 42 -m 42 -n 42 --simce
+options:
+  -h, --help       show this help message and exit
+  --trials TRIALS
+  --q Q
+  --cores CORES
+  --shapes SHAPES  comma-separated k:m:n list (default: all shapes of the paper)
 ```
 
-## Remarks
+```bash
+sage -python experiment_field_size.py --help
+usage: experiment_field_size.py [-h] [--k K] [--trials TRIALS] [--batch BATCH] [--cores CORES]
 
-The code correctly runs on the **SageMath version**: `SageMath version 10.8, Release Date: 2025-12-18`.
+options:
+  -h, --help       show this help message and exit
+  --k K
+  --trials TRIALS
+  --batch BATCH
+  --cores CORES
+```
 
-## License
-
-Apache License Version 2.0, January 2004
+```bash
+# Heuristics
+sage -python experiment_small_parameters.py --trials 25 --cores 10
+sage -python experiment_field_size.py --k 20 --trials 25 --cores 10
+```
